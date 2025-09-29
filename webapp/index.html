@@ -5,34 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>notedr de Amostras A/B</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f0f2f5; color: #333; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 1rem; box-sizing: border-box; }
-        .container { width: 100%; max-width: 1000px; background-color: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
-        h1, h2 { text-align: center; color: #1c1e21; }
-        p { line-height: 1.6; }
-        .form-group { margin-bottom: 1.5rem; }
-        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 600; }
-        .form-group select, .form-group input { width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; box-sizing: border-box; }
-        .btn { display: block; width: 100%; padding: 0.85rem; border: none; border-radius: 6px; background-color: #007bff; color: #fff; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: background-color 0.2s; text-align: center; }
-        .btn:hover:not(:disabled) { background-color: #0056b3; }
-        .btn:disabled { background-color: #ccc; cursor: not-allowed; }
-        .btn-secondary { background-color: #6c757d; }
-        .btn-secondary:hover { background-color: #5a6268; }
-        .hidden { display: none; }
-        .responses { display: flex; flex-direction: column; md:flex-direction: row; gap: 1.5rem; margin: 2rem 0; }
-        .response-card { flex: 1; background-color: #f9f9f9; border: 1px solid #e0e0e0; border-radius: 8px; padding: 1.5rem; white-space: pre-wrap; }
-        .response-card h3 { margin-top: 0; color: #0056b3; }
-        .actions { display: flex; justify-content: center; gap: 1rem; }
-        .action-btn { padding: 0.75rem 1.5rem; font-size: 1rem; cursor: pointer; border-radius: 6px; border: 1px solid #ccc; background-color: #fff; transition: all 0.2s; }
-        .action-btn:hover { background-color: #e9ecef; border-color: #aaa; }
-        #progress { text-align: center; margin-top: 1.5rem; color: #666; font-size: 0.9rem; }
-        .instructions { background-color: #e9ecef; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; }
-        .instructions ul { padding-left: 20px; }
-        /* --- NOVO ESTILO PARA O SELETOR DE DOMÍNIO --- */
-        .multiselect-container { display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 0.5rem; border: 1px solid #ddd; border-radius: 6px; }
-        .multiselect-option { padding: 0.5rem 1rem; border: 1px solid #ccc; border-radius: 16px; cursor: pointer; transition: all 0.2s; background-color: #f0f2f5; }
-        .multiselect-option.selected { background-color: #007bff; color: white; border-color: #007bff; }
-    </style>
 </head>
 <body>
     <div class="container">
@@ -65,9 +37,8 @@
                 <div id="domain-multiselect-container" class="multiselect-container"></div>
             </div>
             <div class="form-group">
-                <label for="language-select">Idioma (Language):</label>
-                <select id="language-select">
-                    </select>
+                <label for="language-select">Idioma:</label>
+                <select id="language-select"></select>
             </div>
             <button id="start-btn" class="btn" onclick="startAnnotationSession()" disabled>Carregando...</button>
         </div>
@@ -75,7 +46,7 @@
         <div id="annotation-container" class="hidden">
             <h2 id="annotation-title">Qual resposta é melhor?</h2>
             <p id="prompt" style="background-color: #e9ecef; padding: 1rem; border-radius: 6px;"></p>
-            <div class="responses" style="display: flex; flex-direction: row; gap: 1.5rem; margin: 2rem 0;">
+            <div class="responses">
                 <div class="response-card"><h3>Resposta A</h3><p id="response-a"></p></div>
                 <div class="response-card"><h3>Resposta B</h3><p id="response-b"></p></div>
             </div>
@@ -86,6 +57,7 @@
             </div>
             <div id="progress"></div>
         </div>
+
         <div id="batch-complete-container" class="hidden">
             <h2>Lote Concluído!</h2>
             <p>Você completou 10 anotações. Bom trabalho!</p>
@@ -93,6 +65,7 @@
             <button class="btn" onclick="prepareNewBatch()">Fazer mais 10</button>
             <button class="btn btn-secondary" style="margin-top: 1rem;" onclick="endSession()">Finalizar por agora</button>
         </div>
+
         <div id="all-done-container" class="hidden">
             <h2>Parabéns!</h2>
             <p>Você anotou todas as amostras disponíveis para os filtros selecionados. Muito obrigado pela sua contribuição!</p>
@@ -100,5 +73,180 @@
     </div>
 
     <script src="script.js"></script>
+
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 1rem;
+            box-sizing: border-box;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        h1, h2 { 
+            text-align: center; 
+            color: #1c1e21; 
+        }
+        
+        p { 
+            line-height: 1.6; 
+        }
+        
+        .form-group { 
+            margin-bottom: 1.5rem; 
+        }
+        
+        .form-group label { 
+            display: block; 
+            margin-bottom: 0.5rem; 
+            font-weight: 600; 
+        }
+        
+        .form-group select, .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+        
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 0.85rem;
+            border: none;
+            border-radius: 6px;
+            background-color: #007bff;
+            color: #fff;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            text-align: center;
+        }
+        
+        .btn:hover:not(:disabled) { 
+            background-color: #0056b3; 
+        }
+        
+        .btn:disabled { 
+            background-color: #ccc; 
+            cursor: not-allowed; 
+        }
+        
+        .btn-secondary { 
+            background-color: #6c757d; 
+        }
+        
+        .btn-secondary:hover { 
+            background-color: #5a6268; 
+        }
+        
+        .hidden { 
+            display: none; 
+        }
+        
+        .response-card { 
+            flex: 1; 
+            padding: 1rem; 
+            border: 1px solid #ccc; 
+            border-radius: 8px; 
+            background-color: #f9f9f9; 
+        }
+        
+        .response-card h3 { 
+            margin-top: 0; 
+            color: #0056b3; 
+        }
+        
+        .actions { 
+            display: flex; 
+            justify-content: center; 
+            gap: 1rem; 
+        }
+        
+        .action-btn {
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            cursor: pointer;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            background-color: #fff;
+            transition: all 0.2s;
+        }
+        
+        .action-btn:hover { 
+            background-color: #e9ecef; 
+            border-color: #aaa; 
+        }
+        
+        #progress { 
+            text-align: center; 
+            margin-top: 1.5rem; 
+            color: #666; 
+            font-size: 0.9rem; 
+        }
+        
+        .instructions { 
+            background-color: #e9ecef; 
+            padding: 1.5rem; 
+            border-radius: 8px; 
+            margin-bottom: 1.5rem; 
+        }
+        
+        .instructions ul { 
+            padding-left: 20px; 
+        }
+        
+        .multiselect-container { 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 0.5rem; 
+            padding: 0.5rem; 
+            border: 1px solid #ddd; 
+            border-radius: 6px; 
+        }
+        
+        .multiselect-option {
+            padding: 0.5rem 1rem;
+            border: 1px solid #ccc;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background-color: #f0f2f5;
+        }
+        
+        .multiselect-option.selected { 
+            background-color: #007bff; 
+            color: white; 
+            border-color: #007bff; 
+        }
+
+        .responses { 
+            display: flex; 
+            flex-direction: row; 
+            gap: 1.5rem; 
+            margin: 2rem 0; 
+        }
+        
+        @media (max-width: 768px) {
+            .responses { flex-direction: column; }
+        }
+    </style>
 </body>
 </html>
