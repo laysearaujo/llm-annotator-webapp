@@ -103,10 +103,12 @@ function populateFilters() {
 }
 
 function startAnnotationSession() {
-    const selectedDomains = Array.from(document.querySelectorAll('#domain-multiselect-container .multiselect-option.selected')).map(el => el.dataset.value);
+    const selectedDomains = Array.from(
+        document.querySelectorAll('#domain-multiselect-container .multiselect-option.selected')
+    ).map(el => el.dataset.value.toLowerCase());
     const selectedLanguage = document.getElementById('language-select').value;
     const filteredSamples = combinedData.filter(item => {
-        const matchDomain = selectedDomains.length === 0 || selectedDomains.includes(item.domain);
+        const matchDomain = selectedDomains.length === 0 || selectedDomains.includes((item.domain || '').toLowerCase());
         let matchLanguage = false;
         if (selectedLanguage === 'todos') {
             matchLanguage = true;
@@ -116,6 +118,7 @@ function startAnnotationSession() {
         }
         return matchDomain && matchLanguage;
     });
+
     availableSamples = filteredSamples.filter(item => !annotatedIds.has(item.id));
     console.log(`${availableSamples.length} samples available for this user.`);
     prepareNewBatch();
