@@ -1,11 +1,11 @@
 const SCRIPT_URL = "/.netlify/functions/submit-annotation";
-const EVALUATIONS_CSV_PATH = "https://raw.githubusercontent.com/laysearaujo/cross-lingual-prompt-analysis/refs/heads/main/data/judged/sample_master_annotator_pool.csv";
-const QUESTIONS_CSV_PATH = "https://raw.githubusercontent.com/laysearaujo/cross-lingual-prompt-analysis/refs/heads/main/data/raw/prompts.csv";
+const EVALUATIONS_CSV_PATH = "https://raw.githubusercontent.com/laysearaujo/cross-lingual-prompt-analysis/main/data/judged/sample_master_annotator_pool.csv";
+const QUESTIONS_CSV_PATH = "https://raw.githubusercontent.com/laysearaujo/cross-lingual-prompt-analysis/main/data/raw/prompts.csv";
 const BATCH_SIZE = 10;
 const PROMPT_TYPES = ['minimum', 'contextual', 'detailed', 'structured'];
 
-let dataCombined = [], samplesAvailable = [], batchCurrent = [], CurrentBatchIndex = 0, humanId = "";
-let notesMadeIDs = new Set();
+let combinedData = [], availableSamples = [], currentBatch = [], currentBatchIndex = 0, humanId = "";
+let annotatedIds = new Set();
 
 window.addEventListener('DOMContentLoaded', () => {
     generateHumanId();
@@ -18,13 +18,14 @@ function generateHumanId() {
         humanId = 'user-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
         localStorage.setItem('humanId', humanId);
     }
-    const noted = localStorage.getItem('notesMadeIDs');
-    if (noted) notesMadeIDs = new Set(JSON.parse(noted));
+
+    const annotated = localStorage.getItem('annotatedIds');
+    if (annotated) annotatedIds = new Set(JSON.parse(annotated));
 }
 
-function showScreen(id) {
+function showScreen(screenId) {
     ['instructions-container', 'setup-container', 'annotation-container', 'batch-complete-container', 'all-done-container'].forEach(cId => document.getElementById(cId).classList.add('hidden'));
-    document.getElementById(id).classList.remove('hidden');
+    document.getElementById(screenId).classList.remove('hidden');
 }
 
 function showSetupScreen() { showScreen('setup-container'); }
@@ -39,105 +40,73 @@ async function loadData() {
     try {
         const [evaluations, questions] = await Promise.all([parseCsv(EVALUATIONS_CSV_PATH), parseCsv(QUESTIONS_CSV_PATH)]);
         const questionsMap = new Map(questions.map(q => [q.question_id, q]));
-
-        dataCombined = evaluations.map(ev => {
+        combinedData = evaluations.map(ev => {
             const questionRow = questionsMap.get(ev.question_id);
             if (!questionRow) return null;
-
             let languageValue = ev.language;
-            if (!languageValue || languageValue.trim() === '') {
-                languageValue = 'en';
-            }
-
+            if (!languageValue || languageValue.trim() === '') languageValue = 'en';
             const idParts = ev.evaluation_id.toLowerCase().split('_');
             let promptType = idParts.find(part => PROMPT_TYPES.includes(part));
             if (!promptType) return null;
-
             let normalizedLanguage = languageValue.split('-')[0].toLowerCase();
             const columnName = `prompt_${promptType}_${normalizedLanguage}`;
             const promptText = questionRow[columnName];
-            
             if (!promptText) {
-                console.warn(`Coluna "${columnName}" não encontrada para q_id: ${ev.question_id}`);
+                console.warn(`Column "${columnName}" not found for question_id: ${ev.question_id}`);
                 return null;
             }
-
             return {
                 id: ev.evaluation_id,
                 prompt: promptText,
-                resposta_A: ev.response_A,
-                resposta_B: ev.response_B,
+                response_A: ev.response_A,
+                response_B: ev.response_B,
                 domain: ev.domain,
-                language: languageValue // Saves the language with the default 'en' if it was empty
+                language: languageValue
             };
-
         }).filter(Boolean);
-
-        console.log(`Carregamento concluído. Total de amostras válidas: ${dataCombined.length}`);
-
-        fillFilters();
+        console.log(`Load complete. Total valid samples: ${combinedData.length}`);
+        populateFilters();
         document.getElementById('loading-status').style.display = 'none';
         document.getElementById('start-btn').disabled = false;
         document.getElementById('start-btn').innerText = "Iniciar Anotação";
-
     } catch (error) {
-        console.error("Falha ao carregar os arquivos CSV:", error);
+        console.error("Failed to load CSV files:", error);
         const status = document.getElementById('loading-status');
         status.style.color = 'red';
-        status.innerText = "Erro ao carregar os dados. Verifique o console (F12).";
+        status.innerText = "Erro ao carregar dados. Verifique os links dos CSVs e o console (F12).";
     }
 }
 
 function parseCsv(filePath) { return new Promise((resolve, reject) => { Papa.parse(filePath, { download: true, header: true, skipEmptyLines: true, complete: results => resolve(results.data), error: err => reject(err) }); }); }
 
-function fillFilters() {
-    const domainMap = {
-        "General Knowledge": "Conhecimento Geral",
-        "Technical": "Técnico (Programação)",
-        "Creative": "Criatividade",
-    };
-
-    const domains = [...new Set(dataCombined.map(item => item.domain))].sort();
+function populateFilters() {
+    const domainMap = { "General Knowledge": "Conhecimento Geral", "Technical": "Técnico (Programação)", "Creative": "Criatividade" };
+    const domains = [...new Set(combinedData.map(item => item.domain))].sort();
     const domainContainer = document.getElementById('domain-multiselect-container');
-    domainContainer.innerHTML = ''; 
-
+    domainContainer.innerHTML = '';
     domains.forEach(domain => {
-        if(domain) {
+        if (domain) {
             const optionEl = document.createElement('div');
             optionEl.classList.add('multiselect-option');
             optionEl.dataset.value = domain;
-
-            optionEl.innerText = domainMap[domain] || domain; 
-            
-            optionEl.addEventListener('click', () => {
-                optionEl.classList.toggle('selected');
-            });
+            optionEl.innerText = domainMap[domain] || domain;
+            optionEl.addEventListener('click', () => optionEl.classList.toggle('selected'));
             domainContainer.appendChild(optionEl);
         }
     });
-
     const languageSelect = document.getElementById('language-select');
     languageSelect.innerHTML = '';
-
-    const optionPt = new Option("Português", "pt-br");
-    const optionEn = new Option("Inglês", "en");
-    const optionTodos = new Option("Ambos", "todos");
-
-    languageSelect.add(optionPt);
-    languageSelect.add(optionEn);
-    languageSelect.add(optionTodos);
-
+    languageSelect.add(new Option("Português", "pt-br"));
+    languageSelect.add(new Option("Inglês", "en"));
+    languageSelect.add(new Option("Ambos", "todos"));
     languageSelect.value = "pt-br";
 }
 
 function startAnnotationSession() {
-    const selectedDomains = Array.from(document.querySelectorAll('#domain-multiselect-container .multiselect-option.selected'))
-                                .map(el => el.dataset.value);
-    const selectedLanguage = document.getElementById('language-select').value; // ex: "pt-br"
-
-    const filteredSamples = dataCombined.filter(item => {
+    const selectedDomains = Array.from(document.querySelectorAll('#domain-multiselect-container .multiselect-option.selected')).map(el => el.dataset.value);
+    const selectedLanguage = document.getElementById('language-select').value;
+    const filteredSamples = combinedData.filter(item => {
         const matchDomain = selectedDomains.length === 0 || selectedDomains.includes(item.domain);
-
         let matchLanguage = false;
         if (selectedLanguage === 'todos') {
             matchLanguage = true;
@@ -145,50 +114,48 @@ function startAnnotationSession() {
             const itemLang = item.language || '';
             matchLanguage = itemLang.toLowerCase().startsWith(selectedLanguage.toLowerCase().split('-')[0]);
         }
-        
         return matchDomain && matchLanguage;
     });
-    
-    samplesAvailable = filteredSamples.filter(item => !notesMadeIDs.has(item.id));
-    
-    console.log(`${samplesAvailable.length} amostras disponíveis para este usuário.`);
+    availableSamples = filteredSamples.filter(item => !annotatedIds.has(item.id));
+    console.log(`${availableSamples.length} samples available for this user.`);
     prepareNewBatch();
 }
 
 function prepareNewBatch() {
-    if (samplesAvailable.length === 0) { showScreen('all-done-container'); return; }
-    for (let i = samplesAvailable.length - 1; i > 0; i--) {
+    if (availableSamples.length === 0) { showScreen('all-done-container'); return; }
+    for (let i = availableSamples.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
-        [samplesAvailable[i], samplesAvailable[j]] = [samplesAvailable[j], samplesAvailable[i]];
+        [availableSamples[i], availableSamples[j]] = [availableSamples[j], availableSamples[i]];
     }
-    batchCurrent = samplesAvailable.slice(0, BATCH_SIZE);
-    CurrentBatchIndex = 0;
+    currentBatch = availableSamples.slice(0, BATCH_SIZE);
+    currentBatchIndex = 0;
     showScreen('annotation-container');
     loadNextSample();
 }
+
 function loadNextSample() {
     window.scrollTo(0, 0);
-
-    if (CurrentBatchIndex >= batchCurrent.length) {
-        document.getElementById('stats-gerais').innerText = `Você já anotou um total de ${notesMadeIDs.size} amostras.`;
+    if (currentBatchIndex >= currentBatch.length) {
+        document.getElementById('stats-gerais').innerText = `Você já anotou um total de ${annotatedIds.size} amostras.`;
         showScreen('batch-complete-container');
         return;
     }
-
-    const item = batchCurrent[CurrentBatchIndex];
+    const item = currentBatch[currentBatchIndex];
     document.getElementById('prompt').innerText = "Prompt: " + item.prompt;
-    document.getElementById('response-a').innerText = item.resposta_A;
-    document.getElementById('response-b').innerText = item.resposta_B;
-    document.getElementById('progress').innerText = `Amostra ${CurrentBatchIndex + 1} de ${batchCurrent.length} (neste lote)`;
+    document.getElementById('response-a').innerText = item.response_A;
+    document.getElementById('response-b').innerText = item.response_B;
+    document.getElementById('progress').innerText = `Amostra ${currentBatchIndex + 1} de ${currentBatch.length} (neste lote)`;
 }
-function saveAnnotation(escolha) {
-    const currentItem = batchCurrent[CurrentBatchIndex];
-    const dadosParaSalvar = { evaluation_id: currentItem.id, human_choice: escolha, human_id: humanId };
-    fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dadosParaSalvar) })
-        .catch(error => console.error("Erro ao salvar:", error));
-    notesMadeIDs.add(currentItem.id);
-    localStorage.setItem('notesMadeIDs', JSON.stringify(Array.from(notesMadeIDs)));
-    samplesAvailable = samplesAvailable.filter(item => item.id !== currentItem.id);
-    CurrentBatchIndex++;
+
+function saveAnnotation(choice) {
+    const currentItem = currentBatch[currentBatchIndex];
+    console.log('id_question', currentItem.id)
+    const dataToSave = { evaluation_id: currentItem.id, human_choice: choice, human_id: humanId };
+    fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dataToSave) })
+        .catch(error => console.error("Error saving:", error));
+    annotatedIds.add(currentItem.id);
+    localStorage.setItem('annotatedIds', JSON.stringify(Array.from(annotatedIds)));
+    availableSamples = availableSamples.filter(item => item.id !== currentItem.id);
+    currentBatchIndex++;
     loadNextSample();
 }
