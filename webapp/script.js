@@ -6,10 +6,12 @@ const PROMPT_TYPES = ['minimum', 'contextual', 'detailed', 'structured'];
 
 let combinedData = [], availableSamples = [], currentBatch = [], currentBatchIndex = 0, humanId = "";
 let annotatedIds = new Set();
+let completedQuestions = [];
 
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
     generateHumanId();
-    loadData();
+    await loadCompletedQuestions();
+    await loadData();
 });
 
 function generateHumanId() {
@@ -21,6 +23,17 @@ function generateHumanId() {
 
     const annotated = localStorage.getItem('annotatedIds');
     if (annotated) annotatedIds = new Set(JSON.parse(annotated));
+}
+
+async function loadCompletedQuestions() {
+    try {
+        const res = await fetch(SCRIPT_URL);
+        completedQuestions = await res.json();
+        console.log(`${completedQuestions.length} completed questions loaded.`);
+    } catch (error) {
+        console.error("Failed to load completed questions:", error);
+        completedQuestions = [];
+    }
 }
 
 function showScreen(screenId) {
@@ -38,16 +51,24 @@ function endSession() {
 
 async function loadData() {
     try {
-        const [evaluations, questions] = await Promise.all([parseCsv(EVALUATIONS_CSV_PATH), parseCsv(QUESTIONS_CSV_PATH)]);
+        const [evaluations, questions] = await Promise.all([
+            parseCsv(EVALUATIONS_CSV_PATH),
+            parseCsv(QUESTIONS_CSV_PATH)
+        ]);
+
         const questionsMap = new Map(questions.map(q => [q.question_id, q]));
+
         combinedData = evaluations.map(ev => {
             const questionRow = questionsMap.get(ev.question_id);
             if (!questionRow) return null;
+
             let languageValue = ev.language;
             if (!languageValue || languageValue.trim() === '') languageValue = 'en';
+
             const idParts = ev.evaluation_id.toLowerCase().split('_');
             let promptType = idParts.find(part => PROMPT_TYPES.includes(part));
             if (!promptType) return null;
+
             let normalizedLanguage = languageValue.split('-')[0].toLowerCase();
             const columnName = `prompt_${promptType}_${normalizedLanguage}`;
             const promptText = questionRow[columnName];
@@ -55,16 +76,21 @@ async function loadData() {
                 console.warn(`Column "${columnName}" not found for question_id: ${ev.question_id}`);
                 return null;
             }
+
             return {
                 id: ev.evaluation_id,
+                baseId: ev.evaluation_id.split('_')[0],
                 prompt: promptText,
                 response_A: ev.response_A,
                 response_B: ev.response_B,
                 domain: ev.domain,
-                language: languageValue
+                language: languageValue,
+                human_count: parseInt(ev.human_count || "0", 10)
             };
-        }).filter(Boolean);
+        }).filter(item => item && item.human_count < 3);
+
         console.log(`Load complete. Total valid samples: ${combinedData.length}`);
+
         populateFilters();
         document.getElementById('loading-status').style.display = 'none';
         document.getElementById('start-btn').disabled = false;
@@ -81,7 +107,12 @@ function parseCsv(filePath) { return new Promise((resolve, reject) => { Papa.par
 
 function populateFilters() {
     const domainMap = { "General Knowledge": "Conhecimento Geral", "Technical": "Técnico (Programação)", "Creative": "Criatividade" };
-    const domains = [...new Set(combinedData.map(item => item.domain))].sort();
+    const domains = [...new Set(
+        combinedData
+            .filter(item => !completedQuestions.includes(item.id))
+            .map(item => item.domain)
+    )].sort();
+
     const domainContainer = document.getElementById('domain-multiselect-container');
     domainContainer.innerHTML = '';
     domains.forEach(domain => {
@@ -102,11 +133,15 @@ function populateFilters() {
     languageSelect.value = "pt-br";
 }
 
-function startAnnotationSession() {
+async function startAnnotationSession() {
+    await loadCompletedQuestions(); 
+
     const selectedDomains = Array.from(
         document.querySelectorAll('#domain-multiselect-container .multiselect-option.selected')
     ).map(el => el.dataset.value.toLowerCase());
+
     const selectedLanguage = document.getElementById('language-select').value;
+
     const filteredSamples = combinedData.filter(item => {
         const matchDomain = selectedDomains.length === 0 || selectedDomains.includes((item.domain || '').toLowerCase());
         let matchLanguage = false;
@@ -116,21 +151,39 @@ function startAnnotationSession() {
             const itemLang = item.language || '';
             matchLanguage = itemLang.toLowerCase().startsWith(selectedLanguage.toLowerCase().split('-')[0]);
         }
-        return matchDomain && matchLanguage;
+
+        const notCompleted = !completedQuestions.includes(item.id);
+        const notAnnotated = !annotatedIds.has(item.id)
+
+        return matchDomain && matchLanguage && notCompleted && notAnnotated;
     });
 
-    availableSamples = filteredSamples.filter(item => !annotatedIds.has(item.id));
+    availableSamples = filteredSamples;
     console.log(`${availableSamples.length} samples available for this user.`);
     prepareNewBatch();
 }
 
 function prepareNewBatch() {
-    if (availableSamples.length === 0) { showScreen('all-done-container'); return; }
+    if (availableSamples.length === 0) {
+        showScreen('all-done-container');
+        return;
+    }
+
     for (let i = availableSamples.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [availableSamples[i], availableSamples[j]] = [availableSamples[j], availableSamples[i]];
     }
-    currentBatch = availableSamples.slice(0, BATCH_SIZE);
+
+    const seenBaseIds = new Set();
+    currentBatch = [];
+    for (const sample of availableSamples) {
+        if (!seenBaseIds.has(sample.baseId)) {
+            currentBatch.push(sample);
+            seenBaseIds.add(sample.baseId);
+        }
+        if (currentBatch.length >= BATCH_SIZE) break;
+    }
+
     currentBatchIndex = 0;
     showScreen('annotation-container');
     loadNextSample();
