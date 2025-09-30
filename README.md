@@ -8,7 +8,7 @@ This project was designed to be deployed on Netlify and is separated from its ma
 
 -   **Remote Data Source:** Loads evaluation and prompt data directly from CSV files hosted in another public GitHub repository.
 -   **User-Persistent Sessions:** Remembers individual annotator progress using `localStorage`, preventing the same user from annotating the same sample twice.
--   **Batched Workflow:** Presents samples in random batches of 10, allowing users to take breaks and resume by starting a new batch.
+-   **Batched Workflow:** Presents samples in random batches of 5, allowing users to take breaks and resume by starting a new batch.
 -   **Dynamic Filtering:** Annotators can filter the sample pool by multiple domains and a specific language before starting a session.
 -   **Secure Data Submission:** Uses a Netlify serverless function as a secure proxy to hide the Google Apps Script URL, preventing unauthorized submissions to the target Google Sheet.
 -   **Simple & Clean UI:** A straightforward interface designed to maximize annotation efficiency.

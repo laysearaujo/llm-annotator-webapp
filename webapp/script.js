@@ -1,7 +1,7 @@
 const SCRIPT_URL = "/.netlify/functions/submit-annotation";
 const EVALUATIONS_CSV_PATH = "https://raw.githubusercontent.com/laysearaujo/cross-lingual-prompt-analysis/main/data/judged/sample_master_annotator_pool.csv";
 const QUESTIONS_CSV_PATH = "https://raw.githubusercontent.com/laysearaujo/cross-lingual-prompt-analysis/main/data/raw/prompts.csv";
-const BATCH_SIZE = 10;
+const BATCH_SIZE = 5;
 const PROMPT_TYPES = ['minimum', 'contextual', 'detailed', 'structured'];
 
 let combinedData = [], availableSamples = [], currentBatch = [], currentBatchIndex = 0, humanId = "";
@@ -27,7 +27,7 @@ function generateHumanId() {
 
 async function loadCompletedQuestions() {
     try {
-        const res = await fetch(SCRIPT_URL);
+        const res = await fetch(`${SCRIPT_URL}?timestamp=${new Date().getTime()}`);
         completedQuestions = await res.json();
         console.log(`${completedQuestions.length} completed questions loaded.`);
     } catch (error) {
@@ -84,10 +84,9 @@ async function loadData() {
                 response_A: ev.response_A,
                 response_B: ev.response_B,
                 domain: ev.domain,
-                language: languageValue,
-                human_count: parseInt(ev.human_count || "0", 10)
+                language: languageValue
             };
-        }).filter(item => item && item.human_count < 3);
+        }).filter(item => item); 
 
         console.log(`Load complete. Total valid samples: ${combinedData.length}`);
 
@@ -153,7 +152,7 @@ async function startAnnotationSession() {
         }
 
         const notCompleted = !completedQuestions.includes(item.id);
-        const notAnnotated = !annotatedIds.has(item.id)
+        const notAnnotated = !annotatedIds.has(item.id);
 
         return matchDomain && matchLanguage && notCompleted && notAnnotated;
     });
