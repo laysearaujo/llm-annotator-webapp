@@ -198,8 +198,8 @@ function loadNextSample() {
     }
     const item = currentBatch[currentBatchIndex];
     document.getElementById('prompt').innerText = "Prompt: " + item.prompt;
-    document.getElementById('response-a').innerText = item.response_A;
-    document.getElementById('response-b').innerText = item.response_B;
+    document.getElementById('response-a').innerHTML = marked.parse(item.response_A || '');
+    document.getElementById('response-b').innerHTML = marked.parse(item.response_B || '');
     document.getElementById('progress').innerText = `Amostra ${currentBatchIndex + 1} de ${currentBatch.length} (neste lote)`;
 }
 

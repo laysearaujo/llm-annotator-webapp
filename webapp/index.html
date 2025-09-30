@@ -6,6 +6,7 @@
     <title>Duelo das IAs 🤖⚔️🤖</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎓</text></svg>">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -48,8 +49,8 @@
             <h2 id="annotation-title">Qual resposta é melhor?</h2>
             <p id="prompt" style="background-color: #e9ecef; padding: 1rem; border-radius: 6px;"></p>
             <div class="responses">
-                <div class="response-card"><h3>Resposta A</h3><p id="response-a"></p></div>
-                <div class="response-card"><h3>Resposta B</h3><p id="response-b"></p></div>
+                <div class="response-card"><h3>Resposta A</h3><div id="response-a"></div></div>
+                <div class="response-card"><h3>Resposta B</h3><div id="response-b"></div></div>
             </div>
             <div class="actions">
                 <button class="action-btn" onclick="saveAnnotation('A')">A Vence</button>
@@ -61,7 +62,7 @@
 
         <div id="batch-complete-container" class="hidden">
             <h2>Lote Concluído!</h2>
-            <p>Você completou 10 anotações. Bom trabalho!</p>
+            <p>Você completou 10 anotações. Bom trabalho! 🤖💖 </p>
             <p id="stats-gerais"></p>
             <button class="btn" onclick="prepareNewBatch()">Fazer mais 10</button>
             <button class="btn btn-secondary" style="margin-top: 1rem;" onclick="endSession()">Finalizar por agora</button>
@@ -69,7 +70,7 @@
 
         <div id="all-done-container" class="hidden">
             <h2>Parabéns!</h2>
-            <p>Você anotou todas as amostras disponíveis para os filtros selecionados. Muito obrigado pela sua contribuição!</p>
+            <p>Você anotou todas as amostras disponíveis para os filtros selecionados. Muito obrigada pela sua contribuição! ✨🎓</p>
         </div>
     </div>
 
@@ -243,6 +244,58 @@
             flex-direction: row; 
             gap: 1.5rem; 
             margin: 2rem 0; 
+        }
+
+        /* Estilos para o conteúdo em Markdown */
+        .response-card div { line-height: 1.6; }
+
+        .response-card div p { margin-top: 0; margin-bottom: 1rem; }
+        
+        .response-card div ul, .response-card div ol { padding-left: 20px; margin-bottom: 1rem; }
+        
+        .response-card div pre {
+            background-color: #e9ecef;
+            padding: 1rem;
+            border-radius: 6px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .response-card div code {
+            font-family: "Courier New", Courier, monospace;
+            background-color: #e9ecef;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        
+        .response-card div pre > code { /* Remove o fundo duplo em blocos de código */
+            padding: 0;
+            background-color: transparent;
+            border-radius: 0;
+        }
+        
+        .response-card div blockquote {
+            border-left: 4px solid #ccc;
+            padding-left: 1rem;
+            color: #666;
+            margin-left: 0;
+        }
+        
+        .response-card div table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1rem;
+        }
+        
+        .response-card div th, .response-card div td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        
+        .response-card div th {
+            background-color: #f2f2f2;
         }
         
         @media (max-width: 768px) {
