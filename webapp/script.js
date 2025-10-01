@@ -126,10 +126,10 @@ function populateFilters() {
     });
     const languageSelect = document.getElementById('language-select');
     languageSelect.innerHTML = '';
-    languageSelect.add(new Option("Português", "pt-br"));
-    languageSelect.add(new Option("Inglês", "en"));
-    languageSelect.add(new Option("Ambos", "todos"));
-    languageSelect.value = "en";
+    // languageSelect.add(new Option("Português", "pt-br"));
+    // languageSelect.add(new Option("Inglês", "en"));
+    languageSelect.add(new Option("Inglês", "todos"));
+    languageSelect.value = "todos";
 }
 
 async function startAnnotationSession() {
