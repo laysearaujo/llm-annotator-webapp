@@ -129,7 +129,7 @@ function populateFilters() {
     languageSelect.add(new Option("Português", "pt-br"));
     languageSelect.add(new Option("Inglês", "en"));
     languageSelect.add(new Option("Ambos", "todos"));
-    languageSelect.value = "pt-br";
+    languageSelect.value = "en";
 }
 
 async function startAnnotationSession() {
